@@ -38,7 +38,7 @@ while not rs.eof
 '	These config files are just the extension number the real ones will need to be the mac address of the phones. 
 '	All you have to do is rename the file to the mac address of the phone you want to have this configuration and save to your tftpboot folder on your freepbx server
 
-	set b = fs.CreateTextFile("\\MGMT\c$\inetpub\ftproot\PBX\EXT\ALL\" & id & ".cfg") 'Modify to your server share where you store cfg files.
+	set b = fs.CreateTextFile("\\ServerName\Share\" & id & ".cfg") 'Modify to your server share where you store cfg files.
 	b.writeline("!sip user name: " & id)
 	b.writeline("!sip auth name: " & id)
 	b.writeline("!sip password: " & secret)
