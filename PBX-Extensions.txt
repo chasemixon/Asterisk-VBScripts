@@ -1,0 +1,90 @@
+Const ForReading = 1, ForWriting = 2
+dim cn, rs
+i = 0
+On Error Resume Next
+set cn = CreateObject("ADODB.Connection")
+set rs = CreateObject("ADODB.Recordset")
+set rs1 = CreateObject("ADODB.Recordset")
+Set fs = CreateObject("Scripting.FileSystemObject")
+connectionString = "Driver={MySQL ODBC 5.1 Driver};Server=********;Data Source=*******; Database=asterisk;User=******; Password=********;"
+cn.Open connectionString
+
+
+i = 0
+selectStatement = "SELECT id, data FROM sip where keyword = 'secret' or keyword = 'callerid' order by id,keyword;"
+rs.open selectStatement, cn, 3
+rs.MoveFirst
+while not rs.eof
+	id = Trim(rs.Fields(0))
+	Name = Trim(rs.Fields(1))
+ 	testname = InStr(Name,"'")
+	if testname > 0 Then Name = Replace(Name,"'","") 	
+	tempname = Split(Name," ")
+	FName = tempname(0)
+	LName = tempname(1)
+	rs.MoveNext
+	id1 = Trim(rs.Fields(0))
+	secret = Trim(rs.Fields(1))
+'	wscript.echo "ID: " & id & chr(13) & "First: " & FName & chr(13) & "Last: " & LName & chr(13) & "Password: " & secret & chr(13) 
+	StrSQL = "Select exten from extensionroutes where route_id = '5' or route_id = '6';"
+	rs1.open StrSQL, cn, 3
+	rs1.MoveFirst
+	Do until rs1.eof
+		If i = 0 Then 
+			extlist = Trim(rs1.Fields(0))
+		Else
+			extlist = extlist & "," & Trim(rs1.Fields(0))
+		End if
+		rs1.MoveNext
+	loop
+
+'	These config files are just the extension number the real ones will need to be the mac address of the phones. 
+'	All you have to do is rename the file to the mac address of the phone you want to have this configuration and save to your tftpboot folder on your freepbx server
+
+	set b = fs.CreateTextFile("\\ServerName\Share\" & id & ".cfg") 'Modify to your server share where you store cfg files.
+	b.writeline("!sip user name: " & id)
+	b.writeline("!sip auth name: " & id)
+	b.writeline("!sip password: " & secret)
+	b.writeline("!sip registration period: 60")
+	b.writeline("")
+	b.writeline("####Preferences:")
+	b.writeline("!live dialpad: 1")
+	b.writeline("!options simple menu: 1")
+	b.writeline("!date format: 2")
+	b.writeline("")
+	ESTtest = InStr(extlist,id)
+	If ESTtest > 0 Then
+		b.writeline("time zone name: US-Eastern")
+		b.writeline("time zone code: EST				# EST, CST, MST, PST, AKS, HAS, HST")
+	End if		
+	b.writeline("")
+	b.writeline("!sip screen name: " & FName & " " & LName)
+	b.writeline("!sip screen name 2: " & id)
+	b.writeline("!sip display name: " & FName & " " & LName)
+	b.writeline("")
+	b.writeline("!hostname: Aastra-67i-" & id)
+	b.writeline("#admin password: 22222")
+	b.writeline("#user password:")
+	b.writeline("#sip send mac: 0")
+
+	If CInt(id) > 200 Then
+		If CInt(id) = 208 or CInt(id) = 214 or CInt(id) = 215 Then
+			b.writeline("")
+		Else
+			b.writeline("# Setup Bottom Soft Keys")
+			b.writeline("softkey1 type: speeddial")
+			b.writeline("softkey1 label: " & Chr(34) & "Login" & Chr(34))
+			b.writeline("softkey1 value: *45")
+			b.writeline("softkey1 line: 1")
+			b.writeline("softkey2 type: speeddial")
+			b.writeline("softkey2 label: " & Chr(34) & "Log Off" & Chr(34))
+			b.writeline("softkey2 value: *45")
+			b.writeline("softkey2 line: 1")
+		End If
+	End if
+	b.writeline("")
+	b.writeline("topsoftkey1 type: blf")
+b.Close
+rs.MoveNext
+wend
+cn.close
