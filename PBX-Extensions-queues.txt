@@ -1,0 +1,210 @@
+Const ForReading = 1, ForWriting = 2
+dim cn, rs
+On Error Resume Next
+Dim Arr1111()
+Dim FNameArr1111()
+Dim LNameArr1111()
+Dim Arr1112()
+Dim FNameArr1112()
+Dim LNameArr1112()
+set cn = CreateObject("ADODB.Connection")
+set rs = CreateObject("ADODB.Recordset")
+set rs1 = CreateObject("ADODB.Recordset")
+set rs2 = CreateObject("ADODB.Recordset")
+set rs3 = CreateObject("ADODB.Recordset")
+set rs4 = CreateObject("ADODB.Recordset")
+set rs5 = CreateObject("ADODB.Recordset")
+Set fs = CreateObject("Scripting.FileSystemObject")
+connectionString = "Driver={MySQL ODBC 5.1 Driver};Server=**********;Data Source=*********; Database=asterisk;User=********; Password=*********;"
+cn.Open connectionString
+'cn.Open "DSN=MyAsteriskDB" 
+i = 0
+x = 0
+y = 0
+StrSQL2 = "SELECT data FROM queues_details WHERE id = '********' AND data like 'Local%' order by keyword;"
+rs2.open StrSQL2, cn, 3
+rs2.MoveFirst
+Do until rs2.eof
+	tempstr = Split(Trim(rs2.Fields(0)),"/")
+	tempstr1 = Split(tempstr(1),"@")
+	StrSQL4 = "Select data FROM sip WHERE id = '" & tempstr1(0) & "' and keyword = 'callerid';"
+	rs4.open StrSQL4, cn, 3
+	rs4.MoveFirst
+	tempName = Trim(rs4.Fields(0))
+ 	testname = InStr(tempName,"'")
+	if testname > 0 Then tempName = Replace(tempName,"'","") 	
+	temp1name = Split(tempName," ")
+	FName1 = temp1name(0)
+	LName1 = temp1name(1)
+	ReDim Preserve Arr1111(x), FNameArr1111(x),LNameArr1111(x)
+	Arr1111(x) = tempstr1(0)
+	FNameArr1111(x) = FName1
+	LNameArr1111(x) = LName1
+	queue1111 = queue1111 & tempstr1(0) & Chr(10)
+	x = x + 1
+	rs4.Close
+	rs2.MoveNext
+Loop
+StrSQL3 = "select data from queues_details where id = '*******' and data like 'Local%' order by keyword;"
+rs3.open StrSQL3, cn, 3
+rs3.MoveFirst
+Do until rs3.eof
+	tempstr = Split(Trim(rs3.Fields(0)),"/")
+	tempstr1 = Split(tempstr(1),"@")
+	StrSQL5 = "Select data FROM sip WHERE id = '" & tempstr1(0) & "' and keyword = 'callerid';"
+	rs5.open StrSQL5, cn, 3
+	rs5.MoveFirst
+	tempName = Trim(rs5.Fields(0))
+ 	testname = InStr(tempName,"'")
+	if testname > 0 Then tempName = Replace(tempName,"'","") 	
+	temp1name = Split(tempName," ")
+	FName1 = temp1name(0)
+	LName1 = temp1name(1)
+	ReDim Preserve Arr1112(y), FNameArr1112(y),LNameArr1112(y)
+	Arr1112(y) = tempstr1(0)
+	FNameArr1112(y) = FName1
+	LNameArr1112(y) = LName1
+	queue1112 = queue1112 & tempstr1(0) & Chr(10)
+	y = y + 1
+	rs5.Close
+	rs3.MoveNext
+Loop	
+
+selectStatement = "SELECT id, data FROM sip where keyword = 'secret' or keyword = 'callerid' order by id,keyword;"
+'msgbox selectStatement
+rs.open selectStatement, cn, 3
+rs.MoveFirst
+while not rs.eof
+	id = Trim(rs.Fields(0))
+	Name = Trim(rs.Fields(1))
+ 	testname = InStr(Name,"'")
+	if testname > 0 Then Name = Replace(Name,"'","") 	
+	tempname = Split(Name," ")
+	FName = tempname(0)
+	LName = tempname(1)
+	rs.MoveNext
+	id1 = Trim(rs.Fields(0))
+	secret = Trim(rs.Fields(1))
+'	wscript.echo "ID: " & id & chr(13) & "First: " & FName & chr(13) & "Last: " & LName & chr(13) & "Password: " & secret & chr(13) 
+	StrSQL1 = "Select exten from extensionroutes where route_id = '5' or route_id = '6';"  ' Two of our offices are in easter time zone, they use these E911 routes for emergencies.
+	rs1.open StrSQL1, cn, 3
+	rs1.MoveFirst
+	Do until rs1.eof
+		If i = 0 Then 
+			extlist = Trim(rs1.Fields(0))
+		Else
+			extlist = extlist & "," & Trim(rs1.Fields(0))
+		End if
+		rs1.MoveNext
+	loop
+	set b = fs.CreateTextFile("\\server\share\" & id & ".cfg")
+	b.writeline("!sip user name: " & id)
+	b.writeline("!sip auth name: " & id)
+	b.writeline("!sip password: " & secret)
+	b.writeline("!sip registration period: 60")
+	b.writeline("")
+	b.writeline("####Preferences:")
+	b.writeline("!live dialpad: 1")
+	b.writeline("!options simple menu: 1")
+	b.writeline("!date format: 2")
+	b.writeline("")
+	ESTtest = InStr(extlist,id)
+	If ESTtest > 0 Then
+		b.writeline("time zone name: US-Eastern")
+		b.writeline("time zone code: EST				# EST, CST, MST, PST, AKS, HAS, HST")
+	End if		
+	b.writeline("")
+	b.writeline("!sip screen name: " & FName & " " & LName)
+	b.writeline("!sip screen name 2: " & id)
+	b.writeline("!sip display name: " & FName & " " & LName)
+	b.writeline("")
+	b.writeline("!hostname: Aastra-67i-" & id)
+	b.writeline("#sip send mac: 0")
+
+	b.writeline("")
+	If CInt(id) > 200 Then ' All of our Queue people are in the 200 range of extension numbers so you will proabably have to modify this to suit your needs.
+		If CInt(id) = 208 or CInt(id) = 214 or CInt(id) = 215 or CInt(id) = 1115 Then  ' these extensions are not in the queues... 
+			b.writeline("topsoftkey1 type: blf")
+		Else
+			If InStr(queue1111,id) > 0 Then
+				If CInt(id) = ****** Then
+					For a = 0 to x - 1
+						b.writeline("topsoftkey" & a + 1 & " type: blf")
+						b.writeline("topsoftkey" & a + 1 & " label: " &  FNameArr1111(a) & " " & LNameArr1111(a))
+						b.writeline("topsoftkey" & a + 1 & " value: " & Arr1111(a))
+						b.writeline("topsoftkey" & a + 1 & " line: 1")
+					Next
+					b.writeline("topsoftkey" & a + 1 & " type: blf")
+					b.writeline("topsoftkey" & a + 1 & " label: ******")
+					b.writeline("topsoftkey" & a + 1 & " value: ******")
+					b.writeline("topsoftkey" & a + 1 & " line: 1")
+	'				wscript.echo "LSS-Wrote"
+				Else
+					For a = 0 to y - 1
+						b.writeline("topsoftkey" & a + 1 & " type: blf")
+						b.writeline("topsoftkey" & a + 1 & " label: " &  FNameArr1112(a) & " " & LNameArr1112(a))
+						b.writeline("topsoftkey" & a + 1 & " value: " & Arr1112(a))
+						b.writeline("topsoftkey" & a + 1 & " line: 1")
+					Next
+					b.writeline("topsoftkey" & a + 1 & " type: blf")
+					b.writeline("topsoftkey" & a + 1 & " label: ******")
+					b.writeline("topsoftkey" & a + 1 & " value: ******")
+					b.writeline("topsoftkey" & a + 1 & " line: 1")
+					b.writeline("topsoftkey" & a + 2 & " type: blf")
+					b.writeline("topsoftkey" & a + 2 & " label: ******")
+					b.writeline("topsoftkey" & a + 2 & " value: ******")
+					b.writeline("topsoftkey" & a + 2 & " line: 1")
+	'				wscript.echo "CSS-Wrote"
+				End If
+			ElseIf InStr(queue1112,id) > 0 Then
+				If CInt(id) = ****** Then
+					For a = 0 to y - 1
+						b.writeline("topsoftkey" & a + 1 & " type: blf")
+						b.writeline("topsoftkey" & a + 1 & " label: " &  FNameArr1112(a) & " " & LNameArr1112(a))
+						b.writeline("topsoftkey" & a + 1 & " value: " & Arr1112(a))
+						b.writeline("topsoftkey" & a + 1 & " line: 1")
+					Next
+					b.writeline("topsoftkey" & a + 1 & " type: blf")
+					b.writeline("topsoftkey" & a + 1 & " label: ******")
+					b.writeline("topsoftkey" & a + 1 & " value: ******")
+					b.writeline("topsoftkey" & a + 1 & " line: 1")
+				Else
+					For a = 0 to x - 1
+						b.writeline("topsoftkey" & a + 1 & " type: blf")
+						b.writeline("topsoftkey" & a + 1 & " label: " &  FNameArr1111(a) & " " & LNameArr1111(a))
+						b.writeline("topsoftkey" & a + 1 & " value: " & Arr1111(a))
+						b.writeline("topsoftkey" & a + 1 & " line: 1")
+					Next
+					b.writeline("topsoftkey" & a + 1 & " type: blf")
+					b.writeline("topsoftkey" & a + 1 & " label: ******")
+					b.writeline("topsoftkey" & a + 1 & " value: ******")
+					b.writeline("topsoftkey" & a + 1 & " line: 1")
+					b.writeline("topsoftkey" & a + 2 & " type: blf")
+					b.writeline("topsoftkey" & a + 2 & " label: ******")
+					b.writeline("topsoftkey" & a + 2 & " value: ******")
+					b.writeline("topsoftkey" & a + 2 & " line: 1")
+	'				wscript.echo "LSS-Wrote"
+				End If
+			Else
+'				wscript.echo "Sales-Wrote"
+				b.writeline("topsoftkey1 type: blf")
+				b.writeline("topsoftkey1 label: ******")
+				b.writeline("topsoftkey1 value: ****")
+				b.writeline("topsoftkey1 line: 1")
+				b.writeline("topsoftkey2 type: blf")
+				b.writeline("topsoftkey2 label: ******")
+				b.writeline("topsoftkey2 value: ******")
+				b.writeline("topsoftkey2 line: 1")
+				b.writeline("topsoftkey3 type: blf")
+				b.writeline("topsoftkey3 label: ******")
+				b.writeline("topsoftkey3 value: ******")
+				b.writeline("topsoftkey3 line: 1")
+			End If	
+		End If
+	Else
+		b.writeline("topsoftkey1 type: blf")
+	End if
+b.Close
+rs.MoveNext
+wend
+cn.close
