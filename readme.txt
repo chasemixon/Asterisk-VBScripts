@@ -9,7 +9,7 @@ then
 TYPE use mysql;
 then create your user and password with the following
 TYPE CREATE USER 'someuser'@'%' IDENTIFIED BY 'somepassword';
-define from where the resource can connect, we’ll use anywhere
+define from where the resource can connect, weâ€™ll use anywhere
 TYPE grant select on asterisk.* TO 'someuser'@'%';
 finally apply the new permissions with
 TYPE FLUSH PRIVILEGES;
@@ -30,8 +30,8 @@ Database if you entered the above correctly you should be able to click the drop
 Click OK
 
 Step 4 
-Modify the PBX-Extensions.vbs to suit your needs.
-You will need to setup the cn.Open DSN line 10
+Modify the PBX-Extensions.vbs or PBX-Extensions-queues.vbs to suit your needs.
+You will need to setup line 9 Line 18 in the queue script with your info.
 and line 43 with a server\share on your network.
 
 This script only handles the auth user and password for Mitel Formally Aastra 6867i phones, I have a base configuration file that goes along with this file
